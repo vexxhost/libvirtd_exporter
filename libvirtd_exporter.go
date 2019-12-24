@@ -54,6 +54,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	prometheus.MustRegister(domainStats)
 
 	defer domainStats.Close()
