@@ -371,21 +371,23 @@ func (c *DomainStatsCollector) collectState(uuid string, stat libvirt.DomainStat
 }
 
 func (c *DomainStatsCollector) collectCPU(uuid string, stat libvirt.DomainStats, ch chan<- prometheus.Metric) {
-	ch <- prometheus.MustNewConstMetric(
-		c.DomainCPUTime,
-		prometheus.CounterValue,
-		float64(stat.Cpu.Time), uuid,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.DomainCPUUser,
-		prometheus.CounterValue,
-		float64(stat.Cpu.User), uuid,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.DomainCPUSystem,
-		prometheus.CounterValue,
-		float64(stat.Cpu.System), uuid,
-	)
+	if stat.Cpu != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainCPUTime,
+			prometheus.CounterValue,
+			float64(stat.Cpu.Time), uuid,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainCPUUser,
+			prometheus.CounterValue,
+			float64(stat.Cpu.User), uuid,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainCPUSystem,
+			prometheus.CounterValue,
+			float64(stat.Cpu.System), uuid,
+		)
+	}
 }
 
 func (c *DomainStatsCollector) collectBalloon(uuid string, stat libvirt.DomainStats, ch chan<- prometheus.Metric) {
