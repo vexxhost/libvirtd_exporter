@@ -21,9 +21,11 @@
 - project:
     check:
       jobs:
+        - golangci-lint
         - libvirtd_exporter:image:build
     gate:
       jobs:
+        - golangci-lint
         - libvirtd_exporter:image:upload
     promote:
       jobs:
