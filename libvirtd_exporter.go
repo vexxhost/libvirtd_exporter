@@ -17,13 +17,14 @@ package main
 import (
 	"net/http"
 
+	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/vexxhost/libvirtd_exporter/collectors"
+	"opendev.org/vexxhost/libvirtd_exporter/collectors"
 )
 
 func main() {
@@ -50,14 +51,18 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	domainStats, err := collectors.NewDomainStatsCollector(*libvirtURI, *libvirtNova)
+	conn, err := libvirt.NewConnect(*libvirtURI)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer conn.Close()
+
+	domainStats, err := collectors.NewDomainStatsCollector(conn, *libvirtNova)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	prometheus.MustRegister(domainStats)
-
-	defer domainStats.Close()
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

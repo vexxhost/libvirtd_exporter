@@ -85,12 +85,7 @@ type NovaMetadata struct {
 }
 
 // nolint:funlen
-func NewDomainStatsCollector(uri string, nova bool) (*DomainStatsCollector, error) {
-	conn, err := libvirt.NewConnect(uri)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDomainStatsCollector(conn *libvirt.Connect, nova bool) (*DomainStatsCollector, error) {
 	return &DomainStatsCollector{
 		Connection: conn,
 		Nova:       nova,
@@ -551,8 +546,4 @@ func (c *DomainStatsCollector) getNovaMetadata(domain *libvirt.Domain) (*NovaMet
 	m.Seconds = time.Since(creationTime).Seconds()
 
 	return m, nil
-}
-
-func (c *DomainStatsCollector) Close() {
-	c.Connection.Close()
 }
