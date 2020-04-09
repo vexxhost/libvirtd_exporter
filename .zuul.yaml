@@ -18,6 +18,12 @@
     parent: vexxhost-promote-docker-image
     vars: *libvirtd_exporter_images
 
+- job:
+    name: libvirtd_exporter:github-mirror
+    parent: vexxhost-upload-git-mirror
+    vars:
+      git_mirror_repository: vexxhost/libvirtd_exporter
+
 - project:
     check:
       jobs:
@@ -30,3 +36,6 @@
     promote:
       jobs:
         - libvirtd_exporter:image:promote
+    post:
+      jobs:
+        - libvirtd_exporter:github-mirror
