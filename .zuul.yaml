@@ -25,6 +25,8 @@
       git_mirror_repository: vexxhost/libvirtd_exporter
 
 - project:
+    templates:
+      - publish-opendev-tox-docs
     check:
       jobs:
         - golangci-lint
