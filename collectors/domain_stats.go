@@ -483,17 +483,17 @@ func (c *DomainStatsCollector) collectBlock(uuid string, stat libvirt.DomainStat
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainBlockWrReqs,
 			prometheus.CounterValue,
-			float64(blockStats.RdReqs), uuid, strconv.Itoa(device), blockStats.Path,
+			float64(blockStats.WrReqs), uuid, strconv.Itoa(device), blockStats.Path,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainBlockWrBytes,
 			prometheus.CounterValue,
-			float64(blockStats.RdBytes), uuid, strconv.Itoa(device), blockStats.Path,
+			float64(blockStats.WrBytes), uuid, strconv.Itoa(device), blockStats.Path,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainBlockWrTimes,
 			prometheus.CounterValue,
-			float64(blockStats.RdTimes), uuid, strconv.Itoa(device), blockStats.Path,
+			float64(blockStats.WrTimes), uuid, strconv.Itoa(device), blockStats.Path,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainBlockFlReqs,
