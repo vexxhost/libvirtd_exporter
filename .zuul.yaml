@@ -1,0 +1,43 @@
+- job:
+    name: libvirtd_exporter:image:build
+    parent: vexxhost-build-docker-image
+    provides: libvirtd_exporter:image
+    vars: &libvirtd_exporter_images
+      docker_images:
+        - context: .
+          repository: vexxhost/libvirtd-exporter
+
+- job:
+    name: libvirtd_exporter:image:upload
+    parent: vexxhost-upload-docker-image
+    provides: libvird_exporter:image
+    vars: *libvirtd_exporter_images
+
+- job:
+    name: libvirtd_exporter:image:promote
+    parent: vexxhost-promote-docker-image
+    vars: *libvirtd_exporter_images
+
+- job:
+    name: libvirtd_exporter:github-mirror
+    parent: vexxhost-upload-git-mirror
+    vars:
+      git_mirror_repository: vexxhost/libvirtd_exporter
+
+- project:
+    templates:
+      - publish-opendev-tox-docs
+    check:
+      jobs:
+        - golangci-lint
+        - libvirtd_exporter:image:build
+    gate:
+      jobs:
+        - golangci-lint
+        - libvirtd_exporter:image:upload
+    promote:
+      jobs:
+        - libvirtd_exporter:image:promote
+    post:
+      jobs:
+        - libvirtd_exporter:github-mirror
