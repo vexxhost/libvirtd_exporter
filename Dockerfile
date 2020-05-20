@@ -1,9 +1,9 @@
 FROM golang:1.13.5 AS builder
 WORKDIR /go/src/app
-COPY . .
 RUN apt-get update && \
     apt-get -y install libvirt-dev && \
     apt-get clean all
+COPY . .
 RUN go build
 
 FROM golang:1.13.5
