@@ -57,12 +57,18 @@ func main() {
 	}
 	defer conn.Close()
 
+	versionCollector, err := collectors.NewVersionCollector(conn)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	domainStats, err := collectors.NewDomainStatsCollector(conn, *libvirtNova)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	prometheus.MustRegister(domainStats)
+	prometheus.MustRegister(versionCollector)
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
