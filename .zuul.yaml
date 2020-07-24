@@ -6,6 +6,9 @@
       docker_images:
         - context: .
           repository: vexxhost/libvirtd-exporter
+          arch:
+            - linux/amd64
+            - linux/arm64
 
 - job:
     name: libvirtd_exporter:image:upload
