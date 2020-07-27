@@ -1,2 +1,4 @@
 .tox
 doc/build
+
+libvirtd_exporter
