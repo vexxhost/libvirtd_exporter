@@ -17,7 +17,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -51,18 +50,12 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	conn, err := libvirt.NewConnect(*libvirtURI)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer conn.Close()
-
-	versionCollector, err := collectors.NewVersionCollector(conn)
+	versionCollector, err := collectors.NewVersionCollector(*libvirtURI)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	domainStats, err := collectors.NewDomainStatsCollector(conn, *libvirtNova)
+	domainStats, err := collectors.NewDomainStatsCollector(*libvirtNova, *libvirtURI)
 	if err != nil {
 		log.Fatalln(err)
 	}

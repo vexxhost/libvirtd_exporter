@@ -25,14 +25,14 @@ import (
 type VersionCollector struct {
 	prometheus.Collector
 
-	Connection *libvirt.Connect
+	LibvirtURI string
 
 	Version *prometheus.Desc
 }
 
-func NewVersionCollector(conn *libvirt.Connect) (*VersionCollector, error) {
+func NewVersionCollector(libvirtURI string) (*VersionCollector, error) {
 	return &VersionCollector{
-		Connection: conn,
+		LibvirtURI: libvirtURI,
 
 		Version: prometheus.NewDesc(
 			"libvirtd_info",
@@ -47,19 +47,26 @@ func (c *VersionCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
-	hypervisorType, err := c.Connection.GetType()
+	conn, err := libvirt.NewConnect(c.LibvirtURI)
+	if err != nil {
+		log.Errorln(err)
+		return
+	}
+	defer conn.Close()
+
+	hypervisorType, err := conn.GetType()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
 
-	hypervisorVersion, err := c.Connection.GetVersion()
+	hypervisorVersion, err := conn.GetVersion()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
 
-	libvirtVersion, err := c.Connection.GetLibVersion()
+	libvirtVersion, err := conn.GetLibVersion()
 	if err != nil {
 		log.Errorln(err)
 		return

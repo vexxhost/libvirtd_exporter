@@ -27,8 +27,9 @@ import (
 type DomainStatsCollector struct {
 	prometheus.Collector
 
-	Connection *libvirt.Connect
-	Nova       bool
+	LibvirtURI string
+
+	Nova bool
 
 	DomainSeconds *prometheus.Desc
 
@@ -85,9 +86,9 @@ type NovaMetadata struct {
 }
 
 // nolint:funlen
-func NewDomainStatsCollector(conn *libvirt.Connect, nova bool) (*DomainStatsCollector, error) {
+func NewDomainStatsCollector(nova bool, libvirtURI string) (*DomainStatsCollector, error) {
 	return &DomainStatsCollector{
-		Connection: conn,
+		LibvirtURI: libvirtURI,
 		Nova:       nova,
 
 		DomainSeconds: prometheus.NewDesc(
@@ -307,7 +308,14 @@ func (c *DomainStatsCollector) describeBlock(ch chan<- *prometheus.Desc) {
 }
 
 func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	stats, err := c.Connection.GetAllDomainStats(
+	conn, err := libvirt.NewConnect(c.LibvirtURI)
+	if err != nil {
+		log.Errorln(err)
+		return
+	}
+	defer conn.Close()
+
+	stats, err := conn.GetAllDomainStats(
 		[]*libvirt.Domain{},
 		libvirt.DOMAIN_STATS_STATE|libvirt.DOMAIN_STATS_CPU_TOTAL|libvirt.DOMAIN_STATS_BALLOON|
 			libvirt.DOMAIN_STATS_VCPU|libvirt.DOMAIN_STATS_INTERFACE|libvirt.DOMAIN_STATS_BLOCK,
