@@ -313,7 +313,13 @@ func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		log.Errorln(err)
 		return
 	}
-	defer conn.Close()
+
+	defer func() {
+		_, err := conn.Close()
+		if err != nil {
+			log.Errorln(err)
+		}
+	}()
 
 	stats, err := conn.GetAllDomainStats(
 		[]*libvirt.Domain{},

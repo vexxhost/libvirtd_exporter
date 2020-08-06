@@ -52,7 +52,13 @@ func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
 		log.Errorln(err)
 		return
 	}
-	defer conn.Close()
+
+	defer func() {
+		_, err := conn.Close()
+		if err != nil {
+			log.Errorln(err)
+		}
+	}()
 
 	hypervisorType, err := conn.GetType()
 	if err != nil {
