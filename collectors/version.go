@@ -52,11 +52,17 @@ func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
 		log.Errorln(err)
 		return
 	}
-
 	defer func() {
-		_, err := conn.Close()
+		alive, err := conn.IsAlive()
 		if err != nil {
 			log.Errorln(err)
+			return
+		}
+		if alive {
+			_, err := conn.Close()
+			if err != nil {
+				log.Errorln(err)
+			}
 		}
 	}()
 
