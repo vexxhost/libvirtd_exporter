@@ -25,14 +25,14 @@ import (
 type VersionCollector struct {
 	prometheus.Collector
 
-	LibvirtURI string
+	Connection *libvirt.Connect
 
 	Version *prometheus.Desc
 }
 
-func NewVersionCollector(libvirtURI string) (*VersionCollector, error) {
+func NewVersionCollector(connection *libvirt.Connect) (*VersionCollector, error) {
 	return &VersionCollector{
-		LibvirtURI: libvirtURI,
+		Connection: connection,
 
 		Version: prometheus.NewDesc(
 			"libvirtd_info",
@@ -47,38 +47,44 @@ func (c *VersionCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
-	conn, err := libvirt.NewConnect(c.LibvirtURI)
+	alive, err := c.Connection.IsAlive()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
-	defer func() {
-		alive, err := conn.IsAlive()
+
+	if !alive {
+		uri, err := c.Connection.GetURI()
+		if err != nil {
+			// NOTE(mnaser): If we get to this point, we don't have
+			//               a URI and we can't reconnect, die
+			log.Fatalln(err)
+			return
+		}
+
+		c.Connection.Close()
+
+		conn, err := libvirt.NewConnect(uri)
 		if err != nil {
 			log.Errorln(err)
 			return
 		}
-		if alive {
-			_, err := conn.Close()
-			if err != nil {
-				log.Errorln(err)
-			}
-		}
-	}()
+		c.Connection = conn
+	}
 
-	hypervisorType, err := conn.GetType()
+	hypervisorType, err := c.Connection.GetType()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
 
-	hypervisorVersion, err := conn.GetVersion()
+	hypervisorVersion, err := c.Connection.GetVersion()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
 
-	libvirtVersion, err := conn.GetLibVersion()
+	libvirtVersion, err := c.Connection.GetLibVersion()
 	if err != nil {
 		log.Errorln(err)
 		return

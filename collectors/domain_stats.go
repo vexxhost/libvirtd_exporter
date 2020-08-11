@@ -27,7 +27,7 @@ import (
 type DomainStatsCollector struct {
 	prometheus.Collector
 
-	LibvirtURI string
+	Connection *libvirt.Connect
 
 	Nova bool
 
@@ -86,9 +86,9 @@ type NovaMetadata struct {
 }
 
 // nolint:funlen
-func NewDomainStatsCollector(nova bool, libvirtURI string) (*DomainStatsCollector, error) {
+func NewDomainStatsCollector(nova bool, connection *libvirt.Connect) (*DomainStatsCollector, error) {
 	return &DomainStatsCollector{
-		LibvirtURI: libvirtURI,
+		Connection: connection,
 		Nova:       nova,
 
 		DomainSeconds: prometheus.NewDesc(
@@ -308,26 +308,32 @@ func (c *DomainStatsCollector) describeBlock(ch chan<- *prometheus.Desc) {
 }
 
 func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	conn, err := libvirt.NewConnect(c.LibvirtURI)
+	alive, err := c.Connection.IsAlive()
 	if err != nil {
 		log.Errorln(err)
 		return
 	}
-	defer func() {
-		alive, err := conn.IsAlive()
+
+	if !alive {
+		uri, err := c.Connection.GetURI()
+		if err != nil {
+			// NOTE(mnaser): If we get to this point, we don't have
+			//               a URI and we can't reconnect, die
+			log.Fatalln(err)
+			return
+		}
+
+		c.Connection.Close()
+
+		conn, err := libvirt.NewConnect(uri)
 		if err != nil {
 			log.Errorln(err)
 			return
 		}
-		if alive {
-			_, err := conn.Close()
-			if err != nil {
-				log.Errorln(err)
-			}
-		}
-	}()
+		c.Connection = conn
+	}
 
-	stats, err := conn.GetAllDomainStats(
+	stats, err := c.Connection.GetAllDomainStats(
 		[]*libvirt.Domain{},
 		libvirt.DOMAIN_STATS_STATE|libvirt.DOMAIN_STATS_CPU_TOTAL|libvirt.DOMAIN_STATS_BALLOON|
 			libvirt.DOMAIN_STATS_VCPU|libvirt.DOMAIN_STATS_INTERFACE|libvirt.DOMAIN_STATS_BLOCK,
