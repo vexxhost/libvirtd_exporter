@@ -340,6 +340,15 @@ func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		0,
 	)
 
+	defer func(stats []libvirt.DomainStats) {
+		for _, stat := range stats {
+			err := stat.Domain.Free()
+			if err != nil {
+				log.Errorln(err)
+			}
+		}
+	}(stats)
+
 	if err != nil {
 		log.Errorln(err)
 		return
