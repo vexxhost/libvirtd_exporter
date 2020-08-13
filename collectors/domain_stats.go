@@ -40,8 +40,19 @@ type DomainStatsCollector struct {
 	DomainCPUUser   *prometheus.Desc
 	DomainCPUSystem *prometheus.Desc
 
-	DomainBalloonCurrent *prometheus.Desc
-	DomainBalloonMaximum *prometheus.Desc
+	DomainBalloonCurrent        *prometheus.Desc
+	DomainBalloonMaximum        *prometheus.Desc
+	DomainBalloonSwapIn         *prometheus.Desc
+	DomainBalloonSwapOut        *prometheus.Desc
+	DomainBalloonMajorFault     *prometheus.Desc
+	DomainBalloonMinorFault     *prometheus.Desc
+	DomainBalloonUnused         *prometheus.Desc
+	DomainBalloonAvailable      *prometheus.Desc
+	DomainBalloonRss            *prometheus.Desc
+	DomainBalloonUsable         *prometheus.Desc
+	DomainBalloonDiskCaches     *prometheus.Desc
+	DomainBalloonHugetlbPgAlloc *prometheus.Desc
+	DomainBalloonHugetlbPgFail  *prometheus.Desc
 
 	DomainVcpuState *prometheus.Desc
 	DomainVcpuTime  *prometheus.Desc
@@ -132,6 +143,61 @@ func NewDomainStatsCollector(nova bool, connection *libvirt.Connect) (*DomainSta
 		DomainBalloonMaximum: prometheus.NewDesc(
 			"libvirtd_domain_balloon_maximum",
 			"the maximum memory in kiB allowed",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonSwapIn: prometheus.NewDesc(
+			"libvirtd_domain_balloon_swap_in",
+			"kiB of memory swapped in",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonSwapOut: prometheus.NewDesc(
+			"libvirtd_domain_balloon_swap_out",
+			"kiB of memory swapped out",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonMajorFault: prometheus.NewDesc(
+			"libvirtd_domain_balloon_major_fault",
+			"number of page faults where disk I/O was required",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonMinorFault: prometheus.NewDesc(
+			"libvirtd_domain_balloon_minor_fault",
+			"number of page faults where disk I/O was not required",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonUnused: prometheus.NewDesc(
+			"libvirtd_domain_balloon_unused",
+			"KiB of memory left unused by the system",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonAvailable: prometheus.NewDesc(
+			"libvirtd_domain_balloon_available",
+			"KiB of memory usable by the domain",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonRss: prometheus.NewDesc(
+			"libvirtd_domain_balloon_rss",
+			"resident set size of domain in KiB",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonUsable: prometheus.NewDesc(
+			"libvirtd_domain_balloon_usable",
+			"KiB of memory that can be reclaimed without swapping",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonDiskCaches: prometheus.NewDesc(
+			"libvirtd_domain_balloon_disk_caches",
+			"KiB of memory used by disk caches",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonHugetlbPgAlloc: prometheus.NewDesc(
+			"libvirtd_domain_balloon_hugetlb_pgalloc",
+			"number of successful huge page allocations done by virtio balloon",
+			[]string{"uuid"}, nil,
+		),
+		DomainBalloonHugetlbPgFail: prometheus.NewDesc(
+			"libvirtd_domain_balloon_hugetlb_pgfail",
+			"number of failed huge page allocations done by virtio balloon",
 			[]string{"uuid"}, nil,
 		),
 
@@ -275,6 +341,17 @@ func (c *DomainStatsCollector) describeCPU(ch chan<- *prometheus.Desc) {
 func (c *DomainStatsCollector) describeBalloon(ch chan<- *prometheus.Desc) {
 	ch <- c.DomainBalloonCurrent
 	ch <- c.DomainBalloonMaximum
+	ch <- c.DomainBalloonSwapIn
+	ch <- c.DomainBalloonSwapOut
+	ch <- c.DomainBalloonMajorFault
+	ch <- c.DomainBalloonMinorFault
+	ch <- c.DomainBalloonUnused
+	ch <- c.DomainBalloonAvailable
+	ch <- c.DomainBalloonRss
+	ch <- c.DomainBalloonUsable
+	ch <- c.DomainBalloonDiskCaches
+	ch <- c.DomainBalloonHugetlbPgAlloc
+	ch <- c.DomainBalloonHugetlbPgFail
 }
 
 func (c *DomainStatsCollector) describeVcpu(ch chan<- *prometheus.Desc) {
@@ -431,6 +508,83 @@ func (c *DomainStatsCollector) collectBalloon(uuid string, stat libvirt.DomainSt
 		prometheus.GaugeValue,
 		float64(stat.Balloon.Maximum), uuid,
 	)
+	if stat.Balloon.SwapInSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonSwapIn,
+			prometheus.CounterValue,
+			float64(stat.Balloon.SwapIn), uuid,
+		)
+	}
+	if stat.Balloon.SwapOutSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonSwapOut,
+			prometheus.CounterValue,
+			float64(stat.Balloon.SwapOut), uuid,
+		)
+	}
+	if stat.Balloon.MajorFaultSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonMajorFault,
+			prometheus.CounterValue,
+			float64(stat.Balloon.MajorFault), uuid,
+		)
+	}
+	if stat.Balloon.MinorFaultSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonMinorFault,
+			prometheus.CounterValue,
+			float64(stat.Balloon.MinorFault), uuid,
+		)
+	}
+	if stat.Balloon.UnusedSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonUnused,
+			prometheus.GaugeValue,
+			float64(stat.Balloon.Unused), uuid,
+		)
+	}
+	if stat.Balloon.AvailableSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonAvailable,
+			prometheus.GaugeValue,
+			float64(stat.Balloon.Available), uuid,
+		)
+	}
+	if stat.Balloon.RssSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonRss,
+			prometheus.GaugeValue,
+			float64(stat.Balloon.Rss), uuid,
+		)
+	}
+	if stat.Balloon.UsableSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonUsable,
+			prometheus.GaugeValue,
+			float64(stat.Balloon.Usable), uuid,
+		)
+	}
+	if stat.Balloon.DiskCachesSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonDiskCaches,
+			prometheus.GaugeValue,
+			float64(stat.Balloon.DiskCaches), uuid,
+		)
+	}
+	if stat.Balloon.HugetlbPgAllocSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonHugetlbPgAlloc,
+			prometheus.CounterValue,
+			float64(stat.Balloon.HugetlbPgAlloc), uuid,
+		)
+	}
+	if stat.Balloon.HugetlbPgFailSet {
+		ch <- prometheus.MustNewConstMetric(
+			c.DomainBalloonHugetlbPgFail,
+			prometheus.CounterValue,
+			float64(stat.Balloon.HugetlbPgFail), uuid,
+		)
+	}
 }
 
 func (c *DomainStatsCollector) collectVcpu(uuid string, stat libvirt.DomainStats, ch chan<- prometheus.Metric) {
