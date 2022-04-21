@@ -603,47 +603,55 @@ func (c *DomainStatsCollector) collectVcpu(uuid string, stat libvirt.DomainStats
 }
 
 func (c *DomainStatsCollector) collectNet(uuid string, stat libvirt.DomainStats, ch chan<- prometheus.Metric) {
+	var ifIndex int
+	ifIndex = 0
 	for _, netStats := range stat.Net {
+		var ifName string
+		ifName = netStats.Name
+		if len(ifName) == 0 {
+			ifName = strconv.Itoa(ifIndex)
+		}
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetRxBytes,
 			prometheus.CounterValue,
-			float64(netStats.RxBytes), uuid, netStats.Name,
+			float64(netStats.RxBytes), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetRxPkts,
 			prometheus.CounterValue,
-			float64(netStats.RxPkts), uuid, netStats.Name,
+			float64(netStats.RxPkts), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetRxErrs,
 			prometheus.CounterValue,
-			float64(netStats.RxErrs), uuid, netStats.Name,
+			float64(netStats.RxErrs), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetRxDrop,
 			prometheus.CounterValue,
-			float64(netStats.RxDrop), uuid, netStats.Name,
+			float64(netStats.RxDrop), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetTxBytes,
 			prometheus.CounterValue,
-			float64(netStats.TxBytes), uuid, netStats.Name,
+			float64(netStats.TxBytes), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetTxPkts,
 			prometheus.CounterValue,
-			float64(netStats.TxPkts), uuid, netStats.Name,
+			float64(netStats.TxPkts), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetTxErrs,
 			prometheus.CounterValue,
-			float64(netStats.TxErrs), uuid, netStats.Name,
+			float64(netStats.TxErrs), uuid, ifName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.DomainNetTxDrop,
 			prometheus.GaugeValue,
-			float64(netStats.TxDrop), uuid, netStats.Name,
+			float64(netStats.TxDrop), uuid, ifName,
 		)
+		ifIndex++
 	}
 }
 
