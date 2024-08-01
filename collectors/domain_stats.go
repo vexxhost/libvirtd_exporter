@@ -710,7 +710,7 @@ func (c *DomainStatsCollector) collectBlock(uuid string, stat libvirt.DomainStat
 func (c *DomainStatsCollector) getNovaMetadata(domain *libvirt.Domain) (*NovaMetadata, error) {
 	data, err := domain.GetMetadata(
 		libvirt.DOMAIN_METADATA_ELEMENT,
-		"http://openstack.org/xmlns/libvirt/nova/1.0",
+		"http://openstack.org/xmlns/libvirt/nova/1.1",
 		libvirt.DOMAIN_AFFECT_LIVE,
 	)
 	if err != nil {
