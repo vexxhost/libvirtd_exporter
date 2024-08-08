@@ -1,0 +1,43 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- job:
+    name: libvirtd-exporter-build-container-image
+    parent: ci-build-container-image
+    vars: &libvirtd_exporter_images
+      promote_container_image_job: libvirt-exporter-upload-container-image
+      container_images:
+        - context: .
+          registry: registry.atmosphere.dev
+          repository: registry.atmosphere.dev/library/libvirtd-exporter
+          arch:
+            - linux/amd64
+            - linux/arm64
+          tags:
+            - "{{ zuul.commit_id }}"
+            - "{{ zuul.tag is defined | ternary(zuul.tag, 'latest') }}"
+
+- job:
+    name: libvirtd-exporter-upload-container-image
+    parent: ci-upload-docker-image
+    vars: *libvirtd_exporter_images
+
+- job:
+    name: libvirtd-exporter-promote-container-image
+    parent: ci-promote-container-image
+    vars: *libvirtd_exporter_images
+
+- project:
+    merge-mode: squash-merge
+    check:
+      jobs:
+        - golangci-lint
+        - libvirtd-exporter-build-container-image
+    gate:
+      jobs:
+        - golangci-lint
+        - libvirtd-exporter-upload-container-image
+    promote:
+      jobs:
+        - golangci-lint
+        - libvirtd-exporter-promote-container-image
