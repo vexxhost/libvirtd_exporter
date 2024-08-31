@@ -19,7 +19,7 @@
 
 - job:
     name: libvirtd-exporter-upload-container-image
-    parent: ci-upload-docker-image
+    parent: ci-upload-container-image
     vars: *libvirtd_exporter_images
 
 - job:
