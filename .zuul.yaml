@@ -39,5 +39,4 @@
         - libvirtd-exporter-upload-container-image
     promote:
       jobs:
-        - golangci-lint
         - libvirtd-exporter-promote-container-image
