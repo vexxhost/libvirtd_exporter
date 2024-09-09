@@ -16,18 +16,19 @@ package collectors
 
 import (
 	"encoding/xml"
+	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
+	"libvirt.org/go/libvirt"
 )
 
 type DomainStatsCollector struct {
 	prometheus.Collector
 
-	Connection *libvirt.Connect
+	logger     *slog.Logger
+	connection *libvirt.Connect
 
 	Nova bool
 
@@ -97,9 +98,10 @@ type NovaMetadata struct {
 }
 
 // nolint:funlen
-func NewDomainStatsCollector(nova bool, connection *libvirt.Connect) (*DomainStatsCollector, error) {
+func NewDomainStatsCollector(logger *slog.Logger, connection *libvirt.Connect, nova bool) *DomainStatsCollector {
 	return &DomainStatsCollector{
-		Connection: connection,
+		logger:     logger,
+		connection: connection,
 		Nova:       nova,
 
 		DomainSeconds: prometheus.NewDesc(
@@ -308,7 +310,7 @@ func NewDomainStatsCollector(nova bool, connection *libvirt.Connect) (*DomainSta
 			"physical size in bytes of the container of the backing image",
 			[]string{"uuid", "device", "path"}, nil,
 		),
-	}, nil
+	}
 }
 
 func (c *DomainStatsCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -385,32 +387,32 @@ func (c *DomainStatsCollector) describeBlock(ch chan<- *prometheus.Desc) {
 }
 
 func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	alive, err := c.Connection.IsAlive()
+	alive, err := c.connection.IsAlive()
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to check if connection is alive", "err", err)
 		return
 	}
 
 	if !alive {
-		uri, err := c.Connection.GetURI()
+		uri, err := c.connection.GetURI()
 		if err != nil {
 			// NOTE(mnaser): If we get to this point, we don't have
 			//               a URI and we can't reconnect, die
-			log.Fatalln(err)
+			c.logger.Error("Failed to get URI", "err", err)
 			return
 		}
 
-		c.Connection.Close()
+		c.connection.Close()
 
 		conn, err := libvirt.NewConnect(uri)
 		if err != nil {
-			log.Errorln(err)
+			c.logger.Error("Failed to reconnect", "err", err)
 			return
 		}
-		c.Connection = conn
+		c.connection = conn
 	}
 
-	stats, err := c.Connection.GetAllDomainStats(
+	stats, err := c.connection.GetAllDomainStats(
 		[]*libvirt.Domain{},
 		libvirt.DOMAIN_STATS_STATE|libvirt.DOMAIN_STATS_CPU_TOTAL|libvirt.DOMAIN_STATS_BALLOON|
 			libvirt.DOMAIN_STATS_VCPU|libvirt.DOMAIN_STATS_INTERFACE|libvirt.DOMAIN_STATS_BLOCK,
@@ -421,20 +423,20 @@ func (c *DomainStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		for _, stat := range stats {
 			err := stat.Domain.Free()
 			if err != nil {
-				log.Errorln(err)
+				c.logger.Error("Failed to free domain", "err", err)
 			}
 		}
 	}(stats)
 
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to get domain stats", "err", err)
 		return
 	}
 
 	for _, stat := range stats {
 		uuid, err := stat.Domain.GetUUIDString()
 		if err != nil {
-			log.Errorln(err)
+			c.logger.Error("Failed to get domain UUID", "err", err)
 			continue
 		}
 
@@ -453,7 +455,7 @@ func (c *DomainStatsCollector) collectNova(uuid string, stat libvirt.DomainStats
 		metadata, err := c.getNovaMetadata(stat.Domain)
 
 		if err != nil {
-			log.Errorln(err)
+			c.logger.Error("Failed to get Nova metadata", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(
 				c.DomainSeconds,
