@@ -1,4 +1,4 @@
-FROM golang:1.23.1 AS builder
+FROM golang:1.22 AS builder
 WORKDIR /go/src/app
 RUN apt-get update && \
     apt-get -y install libvirt-dev && \
@@ -6,7 +6,7 @@ RUN apt-get update && \
 COPY . .
 RUN go build
 
-FROM golang:1.23.1
+FROM golang:1.22
 RUN apt-get update && \
     apt-get -y install libvirt0 && \
     apt-get clean all
