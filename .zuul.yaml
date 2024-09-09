@@ -5,7 +5,7 @@
     name: libvirtd-exporter-golangci-lint
     parent: golangci-lint
     vars:
-      go_version: 1.22
+      go_version: 1.22.7
       golangci_lint_version: 1.61.0
 
 - job:
