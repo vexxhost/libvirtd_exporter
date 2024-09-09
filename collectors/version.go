@@ -16,30 +16,32 @@ package collectors
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/libvirt/libvirt-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
+	"libvirt.org/go/libvirt"
 )
 
 type VersionCollector struct {
 	prometheus.Collector
 
-	Connection *libvirt.Connect
+	logger     *slog.Logger
+	connection *libvirt.Connect
 
 	Version *prometheus.Desc
 }
 
-func NewVersionCollector(connection *libvirt.Connect) (*VersionCollector, error) {
+func NewVersionCollector(logger *slog.Logger, connection *libvirt.Connect) *VersionCollector {
 	return &VersionCollector{
-		Connection: connection,
+		logger:     logger,
+		connection: connection,
 
 		Version: prometheus.NewDesc(
 			"libvirtd_info",
 			"Version details for LibvirtD",
 			[]string{"driver", "driver_version", "version"}, nil,
 		),
-	}, nil
+	}
 }
 
 func (c *VersionCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -47,46 +49,46 @@ func (c *VersionCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
-	alive, err := c.Connection.IsAlive()
+	alive, err := c.connection.IsAlive()
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to check if connection is alive", "err", err)
 		return
 	}
 
 	if !alive {
-		uri, err := c.Connection.GetURI()
+		uri, err := c.connection.GetURI()
 		if err != nil {
 			// NOTE(mnaser): If we get to this point, we don't have
 			//               a URI and we can't reconnect, die
-			log.Fatalln(err)
+			c.logger.Error("Failed to get URI", "err", err)
 			return
 		}
 
-		c.Connection.Close()
+		c.connection.Close()
 
 		conn, err := libvirt.NewConnect(uri)
 		if err != nil {
-			log.Errorln(err)
+			c.logger.Error("Failed to reconnect", "err", err)
 			return
 		}
-		c.Connection = conn
+		c.connection = conn
 	}
 
-	hypervisorType, err := c.Connection.GetType()
+	hypervisorType, err := c.connection.GetType()
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to get hypervisor type", "err", err)
 		return
 	}
 
-	hypervisorVersion, err := c.Connection.GetVersion()
+	hypervisorVersion, err := c.connection.GetVersion()
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to get hypervisor version", "err", err)
 		return
 	}
 
-	libvirtVersion, err := c.Connection.GetLibVersion()
+	libvirtVersion, err := c.connection.GetLibVersion()
 	if err != nil {
-		log.Errorln(err)
+		c.logger.Error("Failed to get libvirt version", "err", err)
 		return
 	}
 

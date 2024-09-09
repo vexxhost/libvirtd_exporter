@@ -15,41 +15,51 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"os"
 
-	"github.com/libvirt/libvirt-go"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
+	"libvirt.org/go/libvirt"
 
-	"opendev.org/vexxhost/libvirtd_exporter/collectors"
+	"github.com/vexxhost/libvirtd_exporter/collectors"
+)
+
+var (
+	metricsPath = kingpin.Flag(
+		"web.telemetry-path",
+		"Path under which to expose metrics.",
+	).Default("/metrics").String()
+	toolkitFlags = webflag.AddFlags(kingpin.CommandLine, ":9474")
+	libvirtURI   = kingpin.Flag(
+		"libvirt.uri",
+		"Libvirt Connection URI",
+	).Default("qemu:///system").String()
+	libvirtNova = kingpin.Flag(
+		"libvirt.nova",
+		"Parse Libvirt Nova metadata",
+	).Bool()
 )
 
 func main() {
-	var (
-		listenAddress = kingpin.Flag(
-			"web.listen-address",
-			"Address on which to expose metrics and web interface.",
-		).Default(":9474").String()
-		metricsPath = kingpin.Flag(
-			"web.telemetry-path",
-			"Path under which to expose metrics.",
-		).Default("/metrics").String()
-		libvirtURI = kingpin.Flag(
-			"libvirt.uri",
-			"Libvirt Connection URI",
-		).Default("qemu:///system").String()
-		libvirtNova = kingpin.Flag(
-			"libvirt.nova",
-			"Parse Libvirt Nova metadata",
-		).Bool()
-	)
+	promlogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 
 	kingpin.Version(version.Print("libvirtd_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	logger := promslog.New(promlogConfig)
+
+	logger.With("version", version.Info()).Info("Starting libvirtd_exporter")
+	logger.With("build_context", version.BuildContext()).Info("Build context")
 
 	conn, err := libvirt.NewConnect(*libvirtURI)
 	if err != nil {
@@ -57,33 +67,36 @@ func main() {
 		return
 	}
 
-	versionCollector, err := collectors.NewVersionCollector(conn)
-	if err != nil {
-		log.Fatalln(err)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(
+		collectors.NewVersionCollector(logger, conn),
+		collectors.NewDomainStatsCollector(logger, conn, *libvirtNova),
+	)
+
+	http.Handle(*metricsPath, promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+	if *metricsPath != "/" && *metricsPath != "" {
+		landingConfig := web.LandingConfig{
+			Name:        "LibvirtD Exporter",
+			Description: "Prometheus Exporter for LibvirtD",
+			Version:     version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
+		}
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			logger.Error("Error creating landing page", err)
+			os.Exit(1)
+		}
+		http.Handle("/", landingPage)
 	}
 
-	domainStats, err := collectors.NewDomainStatsCollector(*libvirtNova, conn)
-	if err != nil {
-		log.Fatalln(err)
+	srv := &http.Server{}
+	if err := web.ListenAndServe(srv, toolkitFlags, logger); err != nil {
+		logger.Error("Error starting HTTP server", err)
+		os.Exit(1)
 	}
-
-	prometheus.MustRegister(domainStats)
-	prometheus.MustRegister(versionCollector)
-
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`<html>
-			<head><title>Libvirtd Exporter</title></head>
-			<body>
-			<h1>Libvirtd Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			<h2>Build</h2>
-			<pre>` + version.Info() + ` ` + version.BuildContext() + `</pre>
-			</body>
-			</body>
-			</html>`))
-	})
-
-	log.Infoln("Listening on", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
