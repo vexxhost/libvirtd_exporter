@@ -1,6 +1,6 @@
 module github.com/vexxhost/libvirtd_exporter
 
-go 1.23.1
+go 1.22
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
