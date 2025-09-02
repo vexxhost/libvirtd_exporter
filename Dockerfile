@@ -1,4 +1,4 @@
-ARG RELEASE=bookworm
+ARG RELEASE=trixie
 
 FROM golang:1.25-${RELEASE} AS builder
 WORKDIR /go/src/app
