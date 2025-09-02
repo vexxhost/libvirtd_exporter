@@ -7,7 +7,7 @@ require (
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/common v0.65.0
 	github.com/prometheus/exporter-toolkit v0.13.0
-	libvirt.org/go/libvirt v1.10006.0
+	libvirt.org/go/libvirt v1.11006.0
 )
 
 require (
