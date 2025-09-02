@@ -64,7 +64,10 @@ func (c *VersionCollector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		c.connection.Close()
+		_, err = c.connection.Close()
+		if err != nil {
+			c.logger.Error("Failed to close connection", "err", err)
+		}
 
 		conn, err := libvirt.NewConnect(uri)
 		if err != nil {

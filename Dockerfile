@@ -1,6 +1,6 @@
 ARG RELEASE=bookworm
 
-FROM golang:1.22-${RELEASE} AS builder
+FROM golang:1.25-${RELEASE} AS builder
 WORKDIR /go/src/app
 RUN apt-get update && \
     apt-get -y install libvirt-dev && \
