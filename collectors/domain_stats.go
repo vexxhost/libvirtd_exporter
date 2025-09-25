@@ -719,7 +719,15 @@ func (c *DomainStatsCollector) getNovaMetadata(domain *libvirt.Domain) (*NovaMet
 		libvirt.DOMAIN_AFFECT_LIVE,
 	)
 	if err != nil {
-		return nil, err
+		// Try DOMAIN_AFFECT_CONFIG if DOMAIN_AFFECT_LIVE fails
+		data, err = domain.GetMetadata(
+			libvirt.DOMAIN_METADATA_ELEMENT,
+			"http://openstack.org/xmlns/libvirt/nova/1.1",
+			libvirt.DOMAIN_AFFECT_CONFIG,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	m := &NovaMetadata{}
